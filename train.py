@@ -11,6 +11,8 @@ from agent import PPOAgent
 from utils import simulate_twap_taker, argss
 from visualize import create_visualization
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 warnings.filterwarnings('ignore')
 
 torch.manual_seed(42)
@@ -47,6 +49,7 @@ def train_system(data_path: str = "data/AA_Comdty_cpu",
     test_env  = MarketEnv(test_data, config, mode='test', reward_type=args.reward_type)
 
     agent = PPOAgent(config)
+    agent.network.to(device) 
     agent.network.train()
 
     history = {
@@ -200,7 +203,7 @@ def train_system(data_path: str = "data/AA_Comdty_cpu",
 if __name__ == "__main__":
     args = argss()
     if args.data == "cpu":
-        data_path = "data/AA_Comdty_cpu"
+        data_path = "data/AA_Comdty_gpu"
     elif args.data == "gpu":
         data_path = "data/AA_Comdty_gpu"
     else:

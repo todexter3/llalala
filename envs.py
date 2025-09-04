@@ -129,14 +129,16 @@ class MarketEnv:
         if self.current_idx >= len(self.processed_data):
             return np.zeros(self.config.state_dim, dtype=np.float32)
 
+        #time
         row = self.processed_data.iloc[self.current_idx]
         time_pct = self.current_step / self.config.time_horizon
         time_remaining = 1 - time_pct
         time_urgency = np.exp(-5 * time_remaining) if time_remaining < 0.3 else 0
 
+        # Inventory
         inv_pct = self.remaining_inventory / self.config.initial_inventory
         exec_pct = self.executed_qty / self.config.initial_inventory
-        exec_deviation = exec_pct - time_pct
+        exec_deviation = exec_pct - time_pct   #comp with TWAP
         behind_schedule = max(0, -exec_deviation)
         ahead_schedule = max(0, exec_deviation)
 
@@ -227,7 +229,9 @@ class MarketEnv:
         else:
             for px, vol in [(row['bidPrice1'], row['bidVolume1']),
                             (row['bidPrice2'], row['bidVolume2']),
-                            (row['bidPrice3'], row['bidVolume3'])]:
+                            (row['bidPrice3'], row['bidVolume3']),
+                            (row['bidPrice4'], row['bidVolume4']),
+                            (row['bidPrice5'], row['bidVolume5'])]:
                 take = int(min(size - filled, max(0, vol)))
                 if take <= 0: continue
                 filled += take
@@ -247,7 +251,9 @@ class MarketEnv:
             # snap to best bid (L1); if lower than bid2/bid3, snap accordingly
             levels = [(row['bidPrice1'], row['bidVolume1'], 1),
                       (row['bidPrice2'], row['bidVolume2'], 2),
-                      (row['bidPrice3'], row['bidVolume3'], 3)]
+                      (row['bidPrice3'], row['bidVolume3'], 3),
+                      (row['bidPrice4'], row['bidVolume4'], 4),
+                      (row['bidPrice5'], row['bidVolume5'], 5)]
             # pick the highest bid <= lim_price (can't place above ask; we enforce outside crossing before)
             candidate = None
             for px, vol, idx in levels:
@@ -258,7 +264,9 @@ class MarketEnv:
         else:
             levels = [(row['askPrice1'], row['askVolume1'], 1),
                       (row['askPrice2'], row['askVolume2'], 2),
-                      (row['askPrice3'], row['askVolume3'], 3)]
+                      (row['askPrice3'], row['askVolume3'], 3),
+                      (row['askPrice4'], row['askVolume4'], 4),
+                      (row['askPrice5'], row['askVolume5'], 5)]
             candidate = None
             for px, vol, idx in levels:
                 if lim_price <= px:
@@ -599,16 +607,16 @@ class MarketEnv:
             'tracking': 0.30,
             'urgency': 0.15,
             'inaction': 0.05,
-            'completion': 0.08,
-            'vwap_performance': 0.04,
+            'completion': 0.13,
+            'vwap_performance': 0.00,
             'trading_frequency': 0.02,
-            'pv': 0.01
+            'pv': 0.00
         }
         
         # Apply time-varying weights for terminal rewards
         if done:
             # Boost terminal reward weights
-            weights['completion'] *= 3.0
+            weights['completion'] *= 5.0
             weights['vwap_performance'] *= 2.0
             weights['trading_frequency'] *= 2.0
             weights['pv'] *= 2.0

@@ -14,6 +14,10 @@ class PPOAgent:
     def __init__(self, config: Config):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            print(f"成功找到 GPU！")
+            print(f"设备名称: {torch.cuda.get_device_name(0)}")
+            print(f"CUDA 版本: {torch.version.cuda}")
 
         self.network = ActorCritic(config).to(self.device)
 
@@ -43,6 +47,7 @@ class PPOAgent:
         with torch.no_grad():
             if training:
                 action_t, logprob_t = self.network.get_action(s, training=True)
+
                 return action_t.cpu().numpy()[0], float(logprob_t.cpu().numpy()[0])
             else:
                 action_t, _ = self.network.get_action(s, training=False)
