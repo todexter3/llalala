@@ -57,8 +57,8 @@ class Config:
     max_price_offset_bps: float = 50.0   # |offset| cap
 
     # Reward shaping
-    base_reward: float = 1.0
-    completion_bonus: float = 50.0
+    base_reward: float = 1.0 
+    completion_bonus: float = 100.0
     vwap_bonus: float = 20.0
     cost_penalty_scale: float = 0.5
     pv_weight: float = 0.0   # keep 0 for stability; set small (e.g., 0.01) if you want PV in reward

@@ -6,7 +6,7 @@ from typing import Dict
 from config import Config
 
 
-def create_visualization(history: Dict, test_env, config: Config, baseline: Dict):
+def create_visualization(history: Dict, test_env, config: Config, twap_baseline, is_baseline: Dict):
     fig = plt.figure(figsize=(17, 12))
     gs = GridSpec(3, 3, figure=fig, hspace=0.32, wspace=0.28)
 
@@ -59,11 +59,13 @@ def create_visualization(history: Dict, test_env, config: Config, baseline: Dict
     # 5. RL vs TWAP cost bar
     ax5 = fig.add_subplot(gs[1, 2])
     rl_cost = np.mean([t['cost_bps'] for t in test_env.trades]) if test_env.trades else 0.0
-    bar_x = ['RL', 'TWAP']
-    bar_y = [rl_cost, baseline['avg_cost_bps']]
-    ax5.bar(bar_x, bar_y)
+    bar_x = ['RL', 'TWAP', 'IS']
+    bar_y = [rl_cost, twap_baseline['avg_cost_bps'], is_baseline['avg_cost_bps']]
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+    bars = ax5.bar(bar_x, bar_y, color=colors)
+    ax5.bar_label(bars, fmt='{:.2f}')
     ax5.axhline(y=0, color='k', lw=1)
-    ax5.set_title('Avg Cost vs Baseline (bps)'); ax5.grid(True, axis='y', alpha=0.3)
+    ax5.set_title('Avg Cost vs Baselines (bps)'); ax5.grid(True, axis='y', alpha=0.3)
 
     # 6. Summary panel
     ax6 = fig.add_subplot(gs[2, :])
@@ -85,26 +87,32 @@ def create_visualization(history: Dict, test_env, config: Config, baseline: Dict
 
     text = f"""
     PERFORMANCE SUMMARY (side={config.side.upper()})
-    {'='*70}
+    {'='*75}
     TRAINING:
-      Best Valid Reward:     {history['best_valid_reward']:.1f}
-      Best Valid Completion: {history['best_valid_completion']*100:.2f}%
-      Final Train Reward:    {history['train_rewards'][-1]:.1f}
-      Final Train Completion:{history['train_completion'][-1]*100:.2f}%
+      Best Valid Reward:      {history['best_valid_reward']:.1f}
+      Best Valid Completion:  {history['best_valid_completion']*100:.2f}%
+      Final Train Reward:     {history['train_rewards'][-1]:.1f}
+      Final Train Completion: {history['train_completion'][-1]*100:.2f}%
 
     TEST (RL):
-      Completion Rate:       {test_env.executed_qty/config.initial_inventory*100:.2f}%
-      Avg Trade Cost:        {rl_cost:.2f} bps
-      VWAP Shortfall:        {shortfall_bps:.2f} bps
-      Portfolio Value:       {pv:.2f}
-      Number of Trades:      {len(test_env.trades)}
+      Completion Rate:        {test_env.executed_qty/config.initial_inventory*100:.2f}%
+      Avg Trade Cost:         {rl_cost:.2f} bps
+      VWAP Shortfall:         {shortfall_bps:.2f} bps
+      Portfolio Value:        {pv:.2f}
+      Number of Trades:       {len(test_env.trades)}
 
     BASELINE (TWAP Taker):
-      Completion Rate:       {baseline['completion']*100:.2f}%
-      Avg Trade Cost:        {baseline['avg_cost_bps']:.2f} bps
-      VWAP Shortfall:        {baseline['shortfall_bps']:.2f} bps
-      Portfolio Value:       {baseline['pv']:.2f}
-      Number of Trades:      {baseline['num_trades']}
+      Completion Rate:        {twap_baseline['completion']*100:.2f}%
+      Avg Trade Cost:         {twap_baseline['avg_cost_bps']:.2f} bps
+      VWAP Shortfall:         {twap_baseline['shortfall_bps']:.2f} bps
+      Portfolio Value:        {twap_baseline['pv']:.2f}
+      Number of Trades:       {twap_baseline['num_trades']}
+
+    BASELINE (Implementation Shortfall):
+      Completion Rate:        {is_baseline['completion']*100:.2f}%
+      Implementation Cost:    {is_baseline['avg_cost_bps']:.2f} bps
+      Portfolio Value:        {is_baseline['pv']:.2f}
+      Number of Trades:       {is_baseline['num_trades']}
     """
     ax6.text(0.02, 0.98, text, fontsize=10, family='monospace', va='top')
 

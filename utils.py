@@ -148,3 +148,95 @@ def simulate_twap_taker(processed_df: pd.DataFrame, config: Config) -> Dict:
         'pv': pv,
         'num_trades': trades
     }
+
+def simulate_is_baseline(processed_df: pd.DataFrame, config: Config) -> Dict:
+    """
+    Implementation Shortfall (IS) baseline.
+    This strategy acts as an aggressive taker to fill the order as quickly as possible.
+    The cost is measured against the price at the decision time (t=0).
+    """
+    # Decision price is the mid-price at the very beginning of the episode
+    decision_price = processed_df.iloc[0]['mid']
+    
+    remain = config.initial_inventory
+    executed_qty, executed_value = 0, 0.0
+    trades = 0
+
+    for t in range(min(config.time_horizon, len(processed_df))):
+        if remain <= 0: break
+        row = processed_df.iloc[t]
+        
+        # Try to fill the entire remaining inventory in one go
+        this_qty = remain
+
+        # Aggressive taker fill logic (similar to TWAP but for the whole remaining size)
+        filled, cash = 0, 0.0
+        if config.side == 'buy':
+            # Consume up to L5 ask liquidity
+            for px, vol in [(row['askPrice1'], row['askVolume1']),
+                            (row['askPrice2'], row['askVolume2']),
+                            (row['askPrice3'], row['askVolume3']),
+                            (row['askPrice4'], row['askVolume4']),
+                            (row['askPrice5'], row['askVolume5'])]:
+                take = int(min(this_qty - filled, max(0, vol)))
+                if take <= 0: continue
+                filled += take
+                cash += take * px
+                if filled >= this_qty: break
+        else: # sell
+            for px, vol in [(row['bidPrice1'], row['bidVolume1']),
+                            (row['bidPrice2'], row['bidVolume2']),
+                            (row['bidPrice3'], row['bidVolume3']),
+                            (row['bidPrice4'], row['bidVolume4']),
+                            (row['bidPrice5'], row['bidVolume5'])]:
+                take = int(min(this_qty - filled, max(0, vol)))
+                if take <= 0: continue
+                filled += take
+                cash += take * px
+                if filled >= this_qty: break
+
+        if filled > 0:
+            trades += 1
+            executed_qty += filled
+            executed_value += cash
+            remain -= filled
+
+    completion = executed_qty / config.initial_inventory
+    unfilled_qty = config.initial_inventory - executed_qty
+    
+    # Final price to calculate opportunity cost for unfilled part
+    final_price = processed_df.iloc[min(len(processed_df)-1, config.time_horizon-1)]['mid']
+
+    # Calculate Total IS Cost
+    # For buy orders: (executed_value - executed_qty * decision_price) is execution cost
+    #                (unfilled_qty * (final_price - decision_price)) is opportunity cost (if final_price > decision_price)
+    # For sell orders, signs are reversed.
+    
+    execution_cost = executed_value - executed_qty * decision_price
+    opportunity_cost = unfilled_qty * (final_price - decision_price)
+    
+    if config.side == 'sell':
+        # For selling, we want high exec prices and low final prices, so we flip the signs
+        execution_cost = -execution_cost
+        opportunity_cost = -opportunity_cost
+
+    # Total shortfall is the sum of execution and opportunity costs
+    total_shortfall_value = execution_cost + opportunity_cost
+    
+    # IS cost in basis points
+    initial_value = config.initial_inventory * decision_price
+    is_cost_bps = 10000 * (total_shortfall_value / max(1, initial_value))
+
+    # Calculate Portfolio Value (PV) for comparison consistency
+    if config.side == 'buy':
+        pv = -executed_value + executed_qty * final_price
+    else:
+        pv = +executed_value - executed_qty * final_price
+
+    return {
+        'completion': completion,
+        'avg_cost_bps': is_cost_bps,  # Reporting IS cost as the main metric
+        'shortfall_bps': is_cost_bps,
+        'pv': pv,
+        'num_trades': trades
+    }

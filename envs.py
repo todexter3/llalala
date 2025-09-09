@@ -602,21 +602,21 @@ class MarketEnv:
         
         # Convex combination weights (should sum to 1.0)
         weights = {
-            'execution_quality': 0.25,
-            'size_appropriateness': 0.10,
-            'tracking': 0.30,
+            'execution_quality': 0.6,
+            'size_appropriateness': 0.05,
+            'tracking': 0.05,
             'urgency': 0.15,
-            'inaction': 0.05,
-            'completion': 0.13,
+            'inaction': 0.0,
+            'completion': 0.35,
             'vwap_performance': 0.00,
-            'trading_frequency': 0.02,
+            'trading_frequency': 0.05,
             'pv': 0.00
         }
         
         # Apply time-varying weights for terminal rewards
         if done:
             # Boost terminal reward weights
-            weights['completion'] *= 5.0
+            weights['completion'] *= 50.0
             weights['vwap_performance'] *= 2.0
             weights['trading_frequency'] *= 2.0
             weights['pv'] *= 2.0

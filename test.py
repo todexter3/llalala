@@ -69,73 +69,7 @@ def train_system(data_path: str = "data/AA_Comdty_cpu",
     print("STARTING TRAINING")
     print("="*60)
 
-    for ep in range(n_episodes):
-        state = train_env.reset()
-        ep_reward = 0.0
-        ep_costs = []
-
-        for _ in range(config.time_horizon):
-            action, logp = agent.select_action(state, training=True)
-            next_state, reward, done, info = train_env.step(action)
-            agent.store_transition(state, action, reward, next_state, done, logp)
-            ep_reward += reward
-            if info['trade_executed']:
-                ep_costs.append(info['trade_cost_bps'])
-            state = next_state
-            if done: break
-
-        history['train_rewards'].append(ep_reward)
-        history['train_completion'].append(info['completion_rate'])
-        history['train_costs'].append(np.mean(ep_costs) if ep_costs else 0.0)
-
-        if len(agent.buffer) >= config.buffer_size:
-            _ = agent.update()
-
-        if (ep+1) % 25 == 0:
-            agent.network.eval()
-            with torch.no_grad():
-                state = valid_env.reset()
-                v_reward, v_costs = 0.0, []
-                for _ in range(config.time_horizon):
-                    action, _ = agent.select_action(state, training=False)
-                    next_state, reward, done, vinfo = valid_env.step(action)
-                    v_reward += reward
-                    if vinfo['trade_executed']:
-                        v_costs.append(vinfo['trade_cost_bps'])
-                    state = next_state
-                    if done: break
-
-            history['valid_rewards'].append(v_reward)
-            history['valid_completion'].append(vinfo['completion_rate'])
-            history['valid_costs'].append(np.mean(v_costs) if v_costs else 0.0)
-
-            valid_score = v_reward + 100*vinfo['completion_rate']
-            if valid_score > best_valid_score:
-                best_valid_score = valid_score
-                history['best_valid_reward'] = v_reward
-                history['best_valid_completion'] = vinfo['completion_rate']
-                patience_counter = 0
-                agent.save(os.path.join(checkpoint_dir, 'best_model.pth'))
-                print("---New best model saved!---")
-            else:
-                patience_counter += 1
-
-            print(f"\nEpisode {ep+1}/{n_episodes}")
-            print(f"  Train - Reward: {np.mean(history['train_rewards'][-25:]):.1f} | "
-                  f"Completion: {np.mean(history['train_completion'][-25:])*100:.1f}% | "
-                  f"Cost: {np.mean(history['train_costs'][-25:]):.1f} bps")
-            print(f"  Valid - Reward: {v_reward:.1f} | Completion: {vinfo['completion_rate']*100:.1f}% | "
-                  f"Cost: {np.mean(v_costs) if v_costs else 0:.1f} bps")
-            print(f"  Learning - LR: {agent.scheduler.get_last_lr()[0]:.6f}")
-
-            if patience_counter >= config.patience:
-                print(f"\n⚠ Early stopping triggered (patience={config.patience})")
-                break
-            agent.network.train()
-
-        if (ep+1) % save_interval == 0:
-            agent.save(os.path.join(checkpoint_dir, f'checkpoint_ep{ep+1}.pth'))
-
+    
     # ---------- Final testing ----------
     print("\n" + "="*60)
     print("FINAL TESTING")
