@@ -213,9 +213,9 @@ def train_system(data_path: str = "data/AA_Comdty_cpu",
 if __name__ == "__main__":
     args = argss()
     if args.data == "cpu":
-        data_path = "data/ex"
+        data_path = "data/2019"
     elif args.data == "gpu":
-        data_path = "data/ex"
+        data_path = "data/2019"
     else:
         raise ValueError("Invalid data argument. Use 'cpu' or 'gpu'.")
     

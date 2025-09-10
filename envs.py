@@ -602,10 +602,10 @@ class MarketEnv:
         
         # Convex combination weights (should sum to 1.0)
         weights = {
-            'execution_quality': 0.6,
-            'size_appropriateness': 0.05,
-            'tracking': 0.05,
-            'urgency': 0.15,
+            'execution_quality': 0.5,
+            'size_appropriateness': 0.02,
+            'tracking': 0.13,
+            'urgency': 0.20,
             'inaction': 0.0,
             'completion': 0.35,
             'vwap_performance': 0.00,
